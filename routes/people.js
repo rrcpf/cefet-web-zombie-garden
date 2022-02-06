@@ -26,11 +26,15 @@ router.get('/', async (req, res, next) => {
     //   - por exemplo, assim que uma pessoa é excluída, uma mensagem de
     //     sucesso pode ser mostrada
     // - error: idem para mensagem de erro
-    res.render('list-people', {
-      people,
-      success: req.flash('success'),
-      error: req.flash('error')
+    res.format({
+      html: () => res.render('list-people', {
+        people,
+        success: req.flash('success'),
+        error: req.flash('error')
+      }),
+      json: () => res.send(people)
     })
+    
 
   } catch (error) {
     console.error(error)
@@ -88,7 +92,30 @@ router.get('/new/', (req, res) => {
 //   2. Redirecionar para a rota de listagem de pessoas
 //      - Em caso de sucesso do INSERT, colocar uma mensagem feliz
 //      - Em caso de erro do INSERT, colocar mensagem vermelhinha
+router.post('/', async (req, res, next) => {
+  const personName = req.body.name
 
+  if (!personName) {
+    req.flash('error', 'Nenhum nome de pessoa foi passado!')
+    res.redirect('/people')
+    return;
+  }
+  try {
+    const [result] = await db.execute(`INSERT INTO person ( id, name, alive, eatenBy) VALUES (NULL, ?, true, NULL)`, [personName] )
+    if (result.affectedRows !== 1) {
+      req.flash('error', 'Falha em adicionar pessoa')
+    } else {
+      req.flash('success', 'Nova pessoa adicionada')
+    }
+    
+  } catch (error) {
+    req.flash('error', `Erro desconhecido. Descrição: ${error}`)
+
+  } finally {
+    res.redirect('/people')
+  }
+
+})
 
 /* DELETE uma pessoa */
 // Exercício 2: IMPLEMENTAR AQUI
@@ -97,6 +124,24 @@ router.get('/new/', (req, res) => {
 //   2. Redirecionar para a rota de listagem de pessoas
 //      - Em caso de sucesso do INSERT, colocar uma mensagem feliz
 //      - Em caso de erro do INSERT, colocar mensagem vermelhinha
+router.delete('/:id', async (req, res) => {
+  const id = req.params.id
+  
+  try {
+    const [result] = await db.execute(`DELETE FROM person WHERE id=?`, [id])
+    if (result.affectedRows !== 1) {
+      req.flash('error', 'Falha em remover pessoa')
+    } else {
+      req.flash('success', 'Pessoa removida com sucesso')
+    }
+    
+  } catch (error) {
+    req.flash('error', `Erro desconhecido. Descrição: ${error}`)
 
+  } finally {
+    res.redirect('/people')
+  }
+
+})
 
 export default router
